@@ -2,8 +2,49 @@ from Crypto.PublicKey import RSA
 from Crypto.Signature import pkcs1_15
 from Crypto.Hash import SHA256
 
+try:
+    from zxcvbn import zxcvbn
+    ZXCVBN_AVAILABLE = True
+except ImportError:
+    ZXCVBN_AVAILABLE = False
+
+# Fungsi utilitas untuk mengecek kekuatan kata sandi
+def check_password_strength(password):
+    if not ZXCVBN_AVAILABLE:
+        print("Pustaka zxcvbn tidak tersedia, pengecekan kekuatan kata sandi dilewati.")
+        return -1 # Mengembalikan nilai yang menunjukkan pengecekan tidak dilakukan
+
+    results = zxcvbn(password)
+    score = results['score']
+    feedback = results['feedback']['suggestions']
+    warnings = results['feedback']['warning']
+
+    strength_map = {
+        0: "Sangat Lemah",
+        1: "Lemah",
+        2: "Cukup",
+        3: "Kuat",
+        4: "Sangat Kuat"
+    }
+
+    print(f"Kekuatan Kata Sandi/Passphrase: {strength_map.get(score, 'Tidak Diketahui')}")
+    if warnings:
+        print(f"Peringatan: {warnings}")
+    if feedback:
+        print("Saran:")
+        for suggestion in feedback:
+            print(f"- {suggestion}")
+
+    return score
+
 # Fungsi untuk membuat kunci RSA (public dan private) dan menyimpannya ke dalam file
 def generate_rsa_keys(password=None):
+    if password and ZXCVBN_AVAILABLE:
+        strength_score = check_password_strength(password)
+        if strength_score < 2: # Skor 0 (Sangat Lemah) atau 1 (Lemah)
+            print("Peringatan: Passphrase yang Anda masukkan untuk kunci privat lemah. Pertimbangkan untuk menggunakan passphrase yang lebih kuat.")
+            # Di dunia nyata, Anda mungkin ingin menambahkan logika untuk mengulang input atau konfirmasi.
+
     key = RSA.generate(2048)
     private_key = key.export_key(passphrase=password, pkcs=8, protection="scryptAndAES128-CBC")
     public_key = key.publickey().export_key()
